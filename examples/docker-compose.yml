@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  codegen-mcp:
+    build:
+      context: ..
+      dockerfile: examples/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - CODEGEN_ORG_ID=your-org-id
+      - CODEGEN_TOKEN=your-api-token
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
