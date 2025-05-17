@@ -58,6 +58,61 @@ The `CodegenMCPCallable` class provides the following methods:
 
 Each method takes a `context` parameter (the input query or context text) and an optional `additional_params` dictionary for any additional parameters.
 
+### Working with Templates
+
+The `CodegenMCPCallable` class also provides methods for working with templates:
+
+1. `get_template(template_key)`: Get the template for a specific key
+2. `set_template(template_key, template)`: Set or update a template
+
+Example of customizing a template:
+
+```python
+from codegen_mcp_callable import CodegenMCPCallable
+
+# Create an instance of CodegenMCPCallable
+mcp = CodegenMCPCallable()
+
+# Get the PR creation template
+pr_template = mcp.get_template("pr_creation")
+print(f"Original template: {pr_template}")
+
+# Customize the PR creation template
+custom_pr_template = """[CUSTOM PR CREATION TEMPLATE]
+You are tasked with creating a detailed GitHub Pull Request for the following changes.
+
+Custom instructions for PR creation:
+- Create a descriptive title with the format: [FEATURE/FIX/REFACTOR] Brief description
+- Write a comprehensive description with sections: Summary, Changes, Testing, Screenshots
+- Include links to related issues using the format #issue_number
+- List all files modified with brief explanations
+- Add notes about any configuration changes required
+- Suggest specific reviewers based on the code areas modified
+
+Please analyze the following context and create a comprehensive PR:
+
+{context}
+"""
+
+# Set the custom template
+mcp.set_template("pr_creation", custom_pr_template)
+
+# Use the custom template
+result = mcp.create_pr(
+    context="Create a pull request for adding user authentication features."
+)
+
+print(result)
+```
+
+Available template keys:
+- `pr_creation`: Template for PR creation
+- `linear_issues`: Template for Linear issues creation
+- `code_generation`: Template for code generation
+- `data_analysis`: Template for data analysis
+- `documentation`: Template for documentation creation
+- `testing_strategy`: Template for testing strategy creation
+
 ## Environment Variables
 
 The following environment variables can be set:
@@ -66,6 +121,14 @@ The following environment variables can be set:
 - `API_TOKEN`: Your API token (default: "sk-ce027fa7-3c8d-4beb-8c86-ed8ae982ac99")
 
 You can set these in a `.env` file or pass them directly to the `CodegenMCPCallable` constructor.
+
+## Dependencies
+
+This implementation requires the following dependencies:
+
+- `codegen`: The Codegen Python SDK
+- `python-dotenv`: For loading environment variables
+- Other dependencies as specified in `requirements.txt`
 
 ## Examples
 
@@ -77,6 +140,7 @@ See the `examples` directory for example usage of each endpoint:
 - `examples/data_analysis_example.py`: Example of using the data analysis endpoint
 - `examples/documentation_example.py`: Example of using the documentation creation endpoint
 - `examples/testing_strategy_example.py`: Example of using the testing strategy creation endpoint
+- `examples/template_usage_example.py`: Example of customizing and using templates
 
 ## License
 

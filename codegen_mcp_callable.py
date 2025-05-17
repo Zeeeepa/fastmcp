@@ -12,21 +12,15 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Try to import the Codegen SDK, use mock if not available
-try:
-    from codegen import Agent
-except ImportError:
-    print("Codegen SDK not found. Please install it with: pip install codegen")
-    print("For now, we'll use a mock implementation for demonstration purposes.")
-    from mock_codegen import Agent
+# Import the Codegen SDK
+from codegen import Agent
 
 # Configuration
 ORG_ID = os.getenv("ORG_ID", "323")
 API_TOKEN = os.getenv("API_TOKEN", "sk-ce027fa7-3c8d-4beb-8c86-ed8ae982ac99")
 
 # Prompt templates
-PROMPT_TEMPLATES = {
-    "pr_creation": """[PR CREATION TEMPLATE]
+PR_CREATION_TEMPLATE = """[PR CREATION TEMPLATE]
 You are tasked with creating a GitHub Pull Request based on the following details.
 
 Instructions for PR creation:
@@ -40,9 +34,9 @@ Instructions for PR creation:
 Please analyze the following context and create a comprehensive PR:
 
 {context}
-""",
-    
-    "linear_issues": """[LINEAR ISSUE CREATION TEMPLATE]
+"""
+
+LINEAR_ISSUES_TEMPLATE = """[LINEAR ISSUE CREATION TEMPLATE]
 You are tasked with creating a main Linear issue and appropriate sub-issues based on the following details.
 
 Instructions for Linear issue creation:
@@ -56,9 +50,9 @@ Instructions for Linear issue creation:
 Please analyze the following context and create a comprehensive set of Linear issues:
 
 {context}
-""",
-    
-    "code_generation": """[CODE GENERATION TEMPLATE]
+"""
+
+CODE_GENERATION_TEMPLATE = """[CODE GENERATION TEMPLATE]
 You are tasked with generating high-quality, optimized code based on the following specifications.
 
 Instructions for code generation:
@@ -71,9 +65,9 @@ Instructions for code generation:
 Please analyze the following context and generate the requested code:
 
 {context}
-""",
-    
-    "data_analysis": """[DATA ANALYSIS TEMPLATE]
+"""
+
+DATA_ANALYSIS_TEMPLATE = """[DATA ANALYSIS TEMPLATE]
 You are tasked with analyzing data and providing meaningful insights based on the following details.
 
 Instructions for data analysis:
@@ -86,9 +80,9 @@ Instructions for data analysis:
 Please analyze the following context and provide comprehensive data insights:
 
 {context}
-""",
-    
-    "documentation": """[DOCUMENTATION TEMPLATE]
+"""
+
+DOCUMENTATION_TEMPLATE = """[DOCUMENTATION TEMPLATE]
 You are tasked with creating comprehensive documentation based on the following details.
 
 Instructions for documentation:
@@ -101,9 +95,9 @@ Instructions for documentation:
 Please analyze the following context and create comprehensive documentation:
 
 {context}
-""",
-    
-    "testing_strategy": """[TESTING STRATEGY TEMPLATE]
+"""
+
+TESTING_STRATEGY_TEMPLATE = """[TESTING STRATEGY TEMPLATE]
 You are tasked with developing a testing strategy based on the following details.
 
 Instructions for testing strategy:
@@ -117,7 +111,6 @@ Please analyze the following context and develop a comprehensive testing strateg
 
 {context}
 """
-}
 
 class CodegenMCPCallable:
     """
@@ -135,6 +128,16 @@ class CodegenMCPCallable:
         self.org_id = org_id or ORG_ID
         self.token = token or API_TOKEN
         self.agent = Agent(org_id=self.org_id, token=self.token)
+        
+        # Store templates
+        self.templates = {
+            "pr_creation": PR_CREATION_TEMPLATE,
+            "linear_issues": LINEAR_ISSUES_TEMPLATE,
+            "code_generation": CODE_GENERATION_TEMPLATE,
+            "data_analysis": DATA_ANALYSIS_TEMPLATE,
+            "documentation": DOCUMENTATION_TEMPLATE,
+            "testing_strategy": TESTING_STRATEGY_TEMPLATE
+        }
     
     def _execute_template(self, template_key: str, context: str, additional_params: Optional[Dict[str, Any]] = None) -> Any:
         """
@@ -148,11 +151,11 @@ class CodegenMCPCallable:
         Returns:
             The result of the agent task
         """
-        if template_key not in PROMPT_TEMPLATES:
+        if template_key not in self.templates:
             raise ValueError(f"Unknown template key: {template_key}")
         
         # Format the prompt with the context
-        prompt = PROMPT_TEMPLATES[template_key].format(context=context)
+        prompt = self.templates[template_key].format(context=context)
         
         # Add additional parameters if provided
         if additional_params:
@@ -247,6 +250,31 @@ class CodegenMCPCallable:
             The result of the agent task
         """
         return self._execute_template("testing_strategy", context, additional_params)
+    
+    def get_template(self, template_key: str) -> str:
+        """
+        Get the template for a specific key.
+        
+        Args:
+            template_key: The key of the template to get
+            
+        Returns:
+            The template string
+        """
+        if template_key not in self.templates:
+            raise ValueError(f"Unknown template key: {template_key}")
+        
+        return self.templates[template_key]
+    
+    def set_template(self, template_key: str, template: str) -> None:
+        """
+        Set or update a template.
+        
+        Args:
+            template_key: The key of the template to set
+            template: The template string
+        """
+        self.templates[template_key] = template
 
 # Example usage
 if __name__ == "__main__":
