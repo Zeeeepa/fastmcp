@@ -2,7 +2,8 @@
 """
 Codegen MCP Server - A FastMCP server that provides tools to execute Codegen Agent tasks.
 
-This server exposes 6 callable endpoints that execute Codegen Agent tasks with different templates:
+This server exposes 6 callable endpoints that execute Codegen Agent tasks with
+different templates:
 1. Create PR
 2. Create a main issue and sub-issues on Linear
 3-6. Additional customizable endpoints
@@ -11,9 +12,8 @@ Each endpoint uses the same underlying function with different prompt templates.
 """
 
 import os
-import json
 import asyncio
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from fastmcp import FastMCP, Context
 
 # Import the Codegen SDK
@@ -251,4 +251,3 @@ if __name__ == "__main__":
     else:
         # Default to stdio
         mcp.run(transport="stdio")
-
