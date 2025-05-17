@@ -6,27 +6,36 @@ with specialized prompt templates for different use cases.
 """
 
 import os
-from typing import Dict, Any, Optional, Union, List
+import json
+import logging
+from typing import Dict, Any, Optional, Union, List, Tuple
 from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
-# Try to import the Codegen SDK, use mock if not available
+# Import the Codegen SDK
 try:
     from codegen import Agent
-except ImportError:
-    print("Codegen SDK not found. Please install it with: pip install codegen")
-    print("For now, we'll use a mock implementation for demonstration purposes.")
-    from mock_codegen import Agent
+    logger.info("Successfully imported Codegen SDK")
+except ImportError as e:
+    logger.error(f"Failed to import Codegen SDK: {e}")
+    raise ImportError("Codegen SDK not found. Please install it with: pip install codegen")
 
 # Configuration
 ORG_ID = os.getenv("ORG_ID", "323")
 API_TOKEN = os.getenv("API_TOKEN", "sk-ce027fa7-3c8d-4beb-8c86-ed8ae982ac99")
+DEFAULT_TIMEOUT = int(os.getenv("DEFAULT_TIMEOUT", "300"))  # 5 minutes default timeout
 
 # Prompt templates
-PROMPT_TEMPLATES = {
-    "pr_creation": """[PR CREATION TEMPLATE]
+PR_CREATION_TEMPLATE = """[PR CREATION TEMPLATE]
 You are tasked with creating a GitHub Pull Request based on the following details.
 
 Instructions for PR creation:
@@ -40,9 +49,9 @@ Instructions for PR creation:
 Please analyze the following context and create a comprehensive PR:
 
 {context}
-""",
-    
-    "linear_issues": """[LINEAR ISSUE CREATION TEMPLATE]
+"""
+
+LINEAR_ISSUES_TEMPLATE = """[LINEAR ISSUE CREATION TEMPLATE]
 You are tasked with creating a main Linear issue and appropriate sub-issues based on the following details.
 
 Instructions for Linear issue creation:
@@ -56,9 +65,9 @@ Instructions for Linear issue creation:
 Please analyze the following context and create a comprehensive set of Linear issues:
 
 {context}
-""",
-    
-    "code_generation": """[CODE GENERATION TEMPLATE]
+"""
+
+CODE_GENERATION_TEMPLATE = """[CODE GENERATION TEMPLATE]
 You are tasked with generating high-quality, optimized code based on the following specifications.
 
 Instructions for code generation:
@@ -71,9 +80,9 @@ Instructions for code generation:
 Please analyze the following context and generate the requested code:
 
 {context}
-""",
-    
-    "data_analysis": """[DATA ANALYSIS TEMPLATE]
+"""
+
+DATA_ANALYSIS_TEMPLATE = """[DATA ANALYSIS TEMPLATE]
 You are tasked with analyzing data and providing meaningful insights based on the following details.
 
 Instructions for data analysis:
@@ -86,9 +95,9 @@ Instructions for data analysis:
 Please analyze the following context and provide comprehensive data insights:
 
 {context}
-""",
-    
-    "documentation": """[DOCUMENTATION TEMPLATE]
+"""
+
+DOCUMENTATION_TEMPLATE = """[DOCUMENTATION TEMPLATE]
 You are tasked with creating comprehensive documentation based on the following details.
 
 Instructions for documentation:
@@ -101,9 +110,9 @@ Instructions for documentation:
 Please analyze the following context and create comprehensive documentation:
 
 {context}
-""",
-    
-    "testing_strategy": """[TESTING STRATEGY TEMPLATE]
+"""
+
+TESTING_STRATEGY_TEMPLATE = """[TESTING STRATEGY TEMPLATE]
 You are tasked with developing a testing strategy based on the following details.
 
 Instructions for testing strategy:
@@ -117,24 +126,46 @@ Please analyze the following context and develop a comprehensive testing strateg
 
 {context}
 """
-}
 
 class CodegenMCPCallable:
     """
     A class that provides callable endpoints for the Codegen Agent with specialized prompt templates.
     """
     
-    def __init__(self, org_id: Optional[str] = None, token: Optional[str] = None):
+    def __init__(self, org_id: Optional[str] = None, token: Optional[str] = None, timeout: Optional[int] = None):
         """
         Initialize the CodegenMCPCallable with organization ID and API token.
         
         Args:
             org_id: The organization ID for Codegen API
             token: The API token for Codegen API
+            timeout: The timeout in seconds for agent tasks
         """
         self.org_id = org_id or ORG_ID
         self.token = token or API_TOKEN
-        self.agent = Agent(org_id=self.org_id, token=self.token)
+        self.timeout = timeout or DEFAULT_TIMEOUT
+        
+        logger.info(f"Initializing CodegenMCPCallable with org_id={self.org_id}, timeout={self.timeout}")
+        
+        try:
+            self.agent = Agent(org_id=self.org_id, token=self.token)
+            logger.info("Successfully initialized Codegen Agent")
+        except Exception as e:
+            logger.error(f"Failed to initialize Codegen Agent: {e}")
+            raise
+        
+        # Store templates
+        self.templates = {
+            "pr_creation": PR_CREATION_TEMPLATE,
+            "linear_issues": LINEAR_ISSUES_TEMPLATE,
+            "code_generation": CODE_GENERATION_TEMPLATE,
+            "data_analysis": DATA_ANALYSIS_TEMPLATE,
+            "documentation": DOCUMENTATION_TEMPLATE,
+            "testing_strategy": TESTING_STRATEGY_TEMPLATE
+        }
+        
+        # Store task history
+        self.task_history = []
     
     def _execute_template(self, template_key: str, context: str, additional_params: Optional[Dict[str, Any]] = None) -> Any:
         """
@@ -148,27 +179,72 @@ class CodegenMCPCallable:
         Returns:
             The result of the agent task
         """
-        if template_key not in PROMPT_TEMPLATES:
-            raise ValueError(f"Unknown template key: {template_key}")
+        if template_key not in self.templates:
+            error_msg = f"Unknown template key: {template_key}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
         
         # Format the prompt with the context
-        prompt = PROMPT_TEMPLATES[template_key].format(context=context)
+        prompt = self.templates[template_key].format(context=context)
         
         # Add additional parameters if provided
         if additional_params:
-            prompt += f"\n\nAdditional Parameters: {additional_params}"
+            prompt += f"\n\nAdditional Parameters: {json.dumps(additional_params, indent=2)}"
         
-        # Run the agent task
-        task = self.agent.run(prompt)
+        # Log the task execution
+        logger.info(f"Executing template '{template_key}' with context length {len(context)}")
         
-        # Refresh to get updated status
-        task.refresh()
-        
-        # Return the result if completed
-        if task.status == "completed":
-            return task.result
-        
-        return {"status": task.status, "message": "Task not completed yet"}
+        try:
+            # Run the agent task
+            task = self.agent.run(prompt)
+            task_id = getattr(task, 'id', 'unknown')
+            
+            # Store task in history
+            task_info = {
+                'task_id': task_id,
+                'template_key': template_key,
+                'context_length': len(context),
+                'timestamp': None,  # Will be updated when task completes
+                'status': 'pending'
+            }
+            self.task_history.append(task_info)
+            
+            # Wait for task to complete with timeout
+            import time
+            start_time = time.time()
+            
+            while time.time() - start_time < self.timeout:
+                # Refresh to get updated status
+                task.refresh()
+                
+                if task.status == "completed":
+                    # Update task history
+                    task_info['status'] = 'completed'
+                    task_info['timestamp'] = time.time()
+                    logger.info(f"Task {task_id} completed successfully")
+                    return task.result
+                
+                if task.status == "failed":
+                    # Update task history
+                    task_info['status'] = 'failed'
+                    task_info['timestamp'] = time.time()
+                    error_msg = f"Task {task_id} failed with status: {task.status}"
+                    logger.error(error_msg)
+                    return {"status": "failed", "message": error_msg}
+                
+                # Sleep for a short time before checking again
+                time.sleep(2)
+            
+            # If we get here, the task timed out
+            task_info['status'] = 'timeout'
+            task_info['timestamp'] = time.time()
+            error_msg = f"Task {task_id} timed out after {self.timeout} seconds"
+            logger.error(error_msg)
+            return {"status": "timeout", "message": error_msg}
+            
+        except Exception as e:
+            logger.error(f"Error executing template '{template_key}': {e}")
+            return {"status": "error", "message": str(e)}
     
     def create_pr(self, context: str, additional_params: Optional[Dict[str, Any]] = None) -> Any:
         """
@@ -247,6 +323,172 @@ class CodegenMCPCallable:
             The result of the agent task
         """
         return self._execute_template("testing_strategy", context, additional_params)
+    
+    def get_template(self, template_key: str) -> str:
+        """
+        Get the template for a specific key.
+        
+        Args:
+            template_key: The key of the template to get
+            
+        Returns:
+            The template string
+        """
+        if template_key not in self.templates:
+            error_msg = f"Unknown template key: {template_key}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        return self.templates[template_key]
+    
+    def set_template(self, template_key: str, template: str) -> None:
+        """
+        Set or update a template.
+        
+        Args:
+            template_key: The key of the template to set
+            template: The template string
+        """
+        logger.info(f"Setting template '{template_key}' with length {len(template)}")
+        self.templates[template_key] = template
+    
+    def add_template(self, template_key: str, template: str) -> None:
+        """
+        Add a new template.
+        
+        Args:
+            template_key: The key of the new template
+            template: The template string
+        """
+        if template_key in self.templates:
+            error_msg = f"Template key '{template_key}' already exists. Use set_template to update it."
+            logger.warning(error_msg)
+            raise ValueError(error_msg)
+        
+        logger.info(f"Adding new template '{template_key}' with length {len(template)}")
+        self.templates[template_key] = template
+    
+    def delete_template(self, template_key: str) -> None:
+        """
+        Delete a template.
+        
+        Args:
+            template_key: The key of the template to delete
+        """
+        if template_key not in self.templates:
+            error_msg = f"Unknown template key: {template_key}"
+            logger.warning(error_msg)
+            raise ValueError(error_msg)
+        
+        # Don't allow deletion of default templates
+        default_templates = ["pr_creation", "linear_issues", "code_generation", 
+                            "data_analysis", "documentation", "testing_strategy"]
+        if template_key in default_templates:
+            error_msg = f"Cannot delete default template: {template_key}"
+            logger.warning(error_msg)
+            raise ValueError(error_msg)
+        
+        logger.info(f"Deleting template '{template_key}'")
+        del self.templates[template_key]
+    
+    def list_templates(self) -> Dict[str, str]:
+        """
+        List all available templates.
+        
+        Returns:
+            A dictionary of template keys and their values
+        """
+        return self.templates
+    
+    def get_task_history(self) -> List[Dict[str, Any]]:
+        """
+        Get the history of executed tasks.
+        
+        Returns:
+            A list of task history entries
+        """
+        return self.task_history
+    
+    def clear_task_history(self) -> None:
+        """
+        Clear the task history.
+        """
+        logger.info("Clearing task history")
+        self.task_history = []
+    
+    def execute_custom_template(self, template: str, context: str, additional_params: Optional[Dict[str, Any]] = None) -> Any:
+        """
+        Execute a custom template with the given context.
+        
+        Args:
+            template: The custom template to use
+            context: The context text to be processed by the agent
+            additional_params: Additional parameters for the agent
+            
+        Returns:
+            The result of the agent task
+        """
+        # Format the prompt with the context
+        prompt = template.format(context=context)
+        
+        # Add additional parameters if provided
+        if additional_params:
+            prompt += f"\n\nAdditional Parameters: {json.dumps(additional_params, indent=2)}"
+        
+        # Log the task execution
+        logger.info(f"Executing custom template with context length {len(context)}")
+        
+        try:
+            # Run the agent task
+            task = self.agent.run(prompt)
+            task_id = getattr(task, 'id', 'unknown')
+            
+            # Store task in history
+            task_info = {
+                'task_id': task_id,
+                'template_key': 'custom',
+                'context_length': len(context),
+                'timestamp': None,  # Will be updated when task completes
+                'status': 'pending'
+            }
+            self.task_history.append(task_info)
+            
+            # Wait for task to complete with timeout
+            import time
+            start_time = time.time()
+            
+            while time.time() - start_time < self.timeout:
+                # Refresh to get updated status
+                task.refresh()
+                
+                if task.status == "completed":
+                    # Update task history
+                    task_info['status'] = 'completed'
+                    task_info['timestamp'] = time.time()
+                    logger.info(f"Task {task_id} completed successfully")
+                    return task.result
+                
+                if task.status == "failed":
+                    # Update task history
+                    task_info['status'] = 'failed'
+                    task_info['timestamp'] = time.time()
+                    error_msg = f"Task {task_id} failed with status: {task.status}"
+                    logger.error(error_msg)
+                    return {"status": "failed", "message": error_msg}
+                
+                # Sleep for a short time before checking again
+                time.sleep(2)
+            
+            # If we get here, the task timed out
+            task_info['status'] = 'timeout'
+            task_info['timestamp'] = time.time()
+            error_msg = f"Task {task_id} timed out after {self.timeout} seconds"
+            logger.error(error_msg)
+            return {"status": "timeout", "message": error_msg}
+            
+        except Exception as e:
+            logger.error(f"Error executing custom template: {e}")
+            return {"status": "error", "message": str(e)}
 
 # Example usage
 if __name__ == "__main__":
