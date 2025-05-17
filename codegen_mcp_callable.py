@@ -12,13 +12,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Try to import the Codegen SDK, use mock if not available
-try:
-    from codegen import Agent
-except ImportError:
-    print("Codegen SDK not found. Please install it with: pip install codegen")
-    print("For now, we'll use a mock implementation for demonstration purposes.")
-    from mock_codegen import Agent
+# Import the Codegen SDK
+from codegen import Agent
 
 # Configuration
 ORG_ID = os.getenv("ORG_ID", "323")
@@ -259,4 +254,3 @@ if __name__ == "__main__":
     )
     
     print(f"Result: {result}")
-

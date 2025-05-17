@@ -67,6 +67,14 @@ The following environment variables can be set:
 
 You can set these in a `.env` file or pass them directly to the `CodegenMCPCallable` constructor.
 
+## Dependencies
+
+This implementation requires the following dependencies:
+
+- `codegen`: The Codegen Python SDK
+- `python-dotenv`: For loading environment variables
+- Other dependencies as specified in `requirements.txt`
+
 ## Examples
 
 See the `examples` directory for example usage of each endpoint:
@@ -81,4 +89,3 @@ See the `examples` directory for example usage of each endpoint:
 ## License
 
 MIT
-
