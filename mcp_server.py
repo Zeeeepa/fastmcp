@@ -1,15 +1,19 @@
-from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List
 import uvicorn
 import asyncio
 import os
-import json
 from datetime import datetime
 import uuid
 from enum import Enum
-from codegen import Agent
+
+# Import the mock Codegen SDK for testing
+try:
+    from codegen import Agent
+except ImportError:
+    print("Codegen SDK not found. Using mock implementation for testing.")
+    from mock_codegen import Agent
 
 # Configuration
 ORG_ID = os.getenv("ORG_ID", "323")
