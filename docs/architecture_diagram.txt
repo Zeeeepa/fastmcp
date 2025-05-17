@@ -1,0 +1,38 @@
++---------------------+       +----------------------+       +-------------------+
+|                     |       |                      |       |                   |
+|  MCP Client         |       |  Codegen Agent       |       |  Codegen API      |
+|  (Python, JS, etc.) +------>+  MCP Server          +------>+                   |
+|                     |       |                      |       |                   |
++---------------------+       +----------------------+       +-------------------+
+                                        |
+                                        |
+                                        v
+                              +----------------------+
+                              |                      |
+                              |  Prompt Templates    |
+                              |                      |
+                              +----------------------+
+
++-----------------------------------------------------------------------------------+
+|                                                                                   |
+|  Flow:                                                                            |
+|  1. Client calls an endpoint (e.g., create_pr, analyze_codebase)                  |
+|  2. Server selects the appropriate prompt template                                |
+|  3. Server formats the template with the agent query                              |
+|  4. Server calls the Codegen Agent API with the formatted prompt                  |
+|  5. Server polls for task completion                                              |
+|  6. Server returns the result to the client                                       |
+|                                                                                   |
++-----------------------------------------------------------------------------------+
+
++-----------------------------------------------------------------------------------+
+|                                                                                   |
+|  Components:                                                                      |
+|                                                                                   |
+|  - FastMCP Server: Provides the MCP interface and endpoint definitions            |
+|  - Codegen Agent Wrapper: Handles communication with the Codegen API              |
+|  - Prompt Templates: Define the behavior for each endpoint                        |
+|  - Resources: Provide access to prompt templates                                  |
+|                                                                                   |
++-----------------------------------------------------------------------------------+
+
