@@ -66,6 +66,15 @@ import asyncio
 asyncio.run(main())
 ```
 
+## Documentation
+
+For comprehensive documentation, please see the [docs directory](../docs/):
+
+- [Main Documentation](../docs/codegen_agent_mcp_server.md)
+- [Quick Start Guide](../docs/quick_start.md)
+- [Customizing Templates](../docs/customizing_templates.md)
+- [Troubleshooting Guide](../docs/troubleshooting.md)
+
 ## Prompt Templates
 
 Each endpoint uses a specific prompt template that guides the Codegen Agent's behavior. You can view the available templates using the `prompts://templates` resource:
